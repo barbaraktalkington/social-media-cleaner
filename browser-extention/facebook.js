@@ -13,51 +13,66 @@ function scheduleDeleteTimeline() {
 }
 
 function deleteTimeline() {
-    var ActionOptions = document.querySelectorAll("[aria-label='Action options']")[lineIndex];
+    var actionOptionsList = document.querySelectorAll("[aria-label='More options']");
+    var ActionOptions = actionOptionsList[lineIndex];
 
     if(ActionOptions) {
         ActionOptions.click();
-
-        setTimeout(chooseMenuOption, .2*1000);
+        setStatus(`Clicked More options for item #${lineIndex}`);
+        setTimeout(chooseMenuOption, 400); // Increased timeout for menu to appear
+    } else {
+        setStatus("No more items found. Stopping.");
+        clearInterval(intervalId);
     }
 }
 
 function chooseMenuOption() {
-    let menuOptionTexts = ["trash", "Remove", "Delete", "Unlike"];
-
+    let menuOptionTexts = ["Delete", "Unlike", "Remove Reaction"];
     var menuOption = null;
 
     for(var i = 0; i < menuOptionTexts.length; i++) {
         menuOption = document.evaluate("//span[contains(text(), '" + menuOptionTexts[i] + "')]",
             document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-
         if(menuOption != null) {
+            setStatus(`Found menu option: ${menuOptionTexts[i]}`);
             break;
         }
     }
 
     if(menuOption != null) {
         menuOption.click();
-        setTimeout(clickConfirm, .2*1000);
+        setTimeout(clickConfirm, 400);
+    } else {
+        setStatus("No action found, skipping to next item.");
+        lineIndex++;
+        setSkip(lineIndex);
+        setTimeout(deleteTimeline, 800);
     }
 }
 
 function clickConfirm() {
-    let clickConfirmOptions = ["Delete", "Move to Trash", "Remove"];
-
-    let item = null
-    
+    let clickConfirmOptions = ["Delete", "Move to Trash", "Remove", "Unlike"];
+    let item = null;
     for(var i = 0; i < clickConfirmOptions.length; i++) {
         item = document.querySelector("[aria-hidden='false'] [aria-label='" + clickConfirmOptions[i] + "']");
         if(item != null) {
+            setStatus(`Confirming: ${clickConfirmOptions[i]}`);
             break;
         }
     }
 
     if(item != null) {
         item.click();
+        setStatus("Action confirmed. Moving to next item.");
+        lineIndex++;
+        setSkip(lineIndex);
+        setTimeout(deleteTimeline, 1200);
     } else {
-        document.body.click();
+        setStatus("No confirm button found, skipping to next item.");
+        document.body.click(); // Close menu
+        lineIndex++;
+        setSkip(lineIndex);
+        setTimeout(deleteTimeline, 800);
     }
 }
 

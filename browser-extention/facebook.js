@@ -26,14 +26,17 @@ function deleteTimeline() {
     }
 }
 
-function chooseMenuOption() {
-    let menuOptionTexts = ["Delete", "Unlike", "Remove Reaction"];
+function chooseMenuOption(retryDelete) {
+    // Priority: Delete > Unlike > Remove Reaction > Hide from profile
+    let menuOptionTexts = ["Delete", "Unlike", "Remove Reaction", "Hide from profile"];
     var menuOption = null;
+    var chosenOption = null;
 
     for(var i = 0; i < menuOptionTexts.length; i++) {
         menuOption = document.evaluate("//span[contains(text(), '" + menuOptionTexts[i] + "')]",
             document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
         if(menuOption != null) {
+            chosenOption = menuOptionTexts[i];
             setStatus(`Found menu option: ${menuOptionTexts[i]}`);
             break;
         }
@@ -41,7 +44,24 @@ function chooseMenuOption() {
 
     if(menuOption != null) {
         menuOption.click();
-        setTimeout(clickConfirm, 400);
+        setStatus(`Clicked menu option: ${chosenOption}`);
+        // If we clicked Hide from profile, try to click Delete again after a short delay
+        if(chosenOption === "Hide from profile" && !retryDelete) {
+            setTimeout(function() {
+                // Re-open the menu and try Delete
+                var actionOptionsList = document.querySelectorAll("[aria-label='More options']");
+                var ActionOptions = actionOptionsList[lineIndex];
+                if(ActionOptions) {
+                    ActionOptions.click();
+                    setTimeout(function() { chooseMenuOption(true); }, 400);
+                } else {
+                    setStatus("No more items found after Hide from profile. Stopping.");
+                    clearInterval(intervalId);
+                }
+            }, 800);
+        } else {
+            setTimeout(clickConfirm, 400);
+        }
     } else {
         setStatus("No action found, skipping to next item.");
         lineIndex++;
@@ -51,10 +71,17 @@ function chooseMenuOption() {
 }
 
 function clickConfirm() {
+    // Try to find the confirmation button in the popup dialog
     let clickConfirmOptions = ["Delete", "Move to Trash", "Remove", "Unlike"];
     let item = null;
+    // Try to find a visible button with the text (works for Facebook popups)
     for(var i = 0; i < clickConfirmOptions.length; i++) {
+        // Try aria-label first
         item = document.querySelector("[aria-hidden='false'] [aria-label='" + clickConfirmOptions[i] + "']");
+        if(!item) {
+            // Try button text as fallback (for popups with visible text)
+            item = Array.from(document.querySelectorAll("[aria-hidden='false'] button, [role='dialog'] button")).find(btn => btn.innerText && btn.innerText.trim() === clickConfirmOptions[i]);
+        }
         if(item != null) {
             setStatus(`Confirming: ${clickConfirmOptions[i]}`);
             break;
